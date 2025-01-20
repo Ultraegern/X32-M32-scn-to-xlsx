@@ -1,0 +1,5 @@
+Run
+"pyinstaller --onefile --noconsole X32-M32-scn-to-xlsx.py"
+in a terminal in the root folder.
+
+You must have all dependencies (see "requirements.txt") and "pyinstaller" installed.
