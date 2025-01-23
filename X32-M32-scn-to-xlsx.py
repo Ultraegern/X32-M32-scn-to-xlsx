@@ -80,7 +80,10 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
 def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = None, output_path: str = "C:/tmp/Kanalplan.xlsx", input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], output_columns_to_save: list = ["Ch", "Mixer Ch", "Name"]) -> None:
     if os.path.exists(output_path):
         if confirm_overwrite(output_path):
-            pass
+            if check_file(output_path):
+                pass
+            else:
+                return
         else:
             return
     
@@ -121,7 +124,7 @@ def confirm_overwrite(path: str) -> bool:
     root = Tk()
     root.wm_attributes("-topmost", True)
     root.withdraw()
-    result = messagebox.askyesno("Output file already exists - Confirm Overwrite", 'Are you sure you want to overwrite "' + path + '"?', parent=root)
+    result = messagebox.askyesno("Output file already exists", f'Output file already exists.\nAre you sure you want to overwrite "{path}" ?', parent=root)
     # if result:
     #     print("File will be overwritten.")
     #     print("")
@@ -129,6 +132,30 @@ def confirm_overwrite(path: str) -> bool:
     #     print("File will not be overwritten.")
     #     print("")
     return result
+
+def check_file(path: str) -> bool:
+    root = Tk()
+    root.wm_attributes("-topmost", True)
+    root.withdraw()
+    if is_file_in_use(path):
+        retry = messagebox.askretrycancel("File in Use", f'The file "{path}" is currently in use. \nPlease close the file and retry.')
+        if retry:
+            if check_file(path):
+                return True
+        else:
+            return False
+    else:
+        return True
+
+def is_file_in_use(path: str) -> bool:
+    try:
+        # Try to open the file in exclusive mode
+        with open(path, 'r+'):
+            pass
+    except IOError:
+        # If an IOError is raised, the file is in use
+        return True
+    return False
 
 def get_first_DCA_name(lines: list[str], ch: str) -> str:
     if not get_grp_line(lines, ch).split(" %")[1].find("1") == -1:
@@ -165,22 +192,67 @@ def get_first_DCA_colour(lines: list[str], ch: str) -> str:
     else:
         return ""
 
-def get_inputs(lines: list[str]) -> pd.DataFrame:
-    inputs: pd.DataFrame = pd.DataFrame([], columns = ["In/Out", "Mixer Ch", "Pysical Ch", "Name", "Colour", "Icon", "DCA", "DCA Colour"])
+def get_user_in_routing_indexes(lines: str) -> list[int]:
     user_in_routing: list[int] = []
     for line in lines:
         if line.find("/config/userrout/in") == 0: #Get user in routing
             for value in line.split("/config/userrout/in")[1].split(" "):
                 if not value == "":
                     user_in_routing.append(int(value))
-        
+    return user_in_routing
+
+def get_blocks(lines: list[str]) -> list[str]:
+    blocks: list[str] = []
+    for line in lines:
+        if line.find("/config/routing/IN") == 0:
+           for item in line.strip(f"\n").split("/config/routing/IN")[1].split(" "):
+               if item == "":
+                   pass 
+               else:
+                   blocks.append(item)
+    return blocks
+
+def get_block_routing(ch: int, blocks: list[str], user_in_routing_indexes: list[int]) -> str:
+    if 1 <= ch <= 8:
+        if block_routing_lookup_table[blocks[0]][0] == "":
+            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[0]][1] - 1]]
+        else:
+            return block_routing_lookup_table[blocks[0]][ch - 1]
+    elif 9 <= ch <= 16:
+        if block_routing_lookup_table[blocks[1]][0] == "":
+            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[1]][1] - 8 - 1]]
+        else:
+            return block_routing_lookup_table[blocks[1]][ch - 1 - 8]
+    elif 17 <= ch <= 24:
+        if block_routing_lookup_table[blocks[2]][0] == "":
+            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[2]][1] - 16 - 1]]
+        else:
+            return block_routing_lookup_table[blocks[2]][ch - 1 - 16]
+    elif 25 <= ch <= 32:
+        if block_routing_lookup_table[blocks[3]][0] == "":
+            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[3]][1] - 24 - 1]]
+        else:
+            return block_routing_lookup_table[blocks[3]][ch - 1 - 24]
+
+def get_override_routing(line: str, blocks: list[str], user_in_routing_indexes: list[int]) -> str:
+    override_index: int = int(line.split('"')[2].split(" ")[3])
+    if 1 <= override_index <= 32:
+        return get_block_routing(override_index, blocks, user_in_routing_indexes) 
+    else:
+        return override_routing_lookup_table[override_index]
+
+def get_inputs(lines: list[str]) -> pd.DataFrame:
+    inputs: pd.DataFrame = pd.DataFrame([], columns = ["In/Out", "Mixer Ch", "Pysical Ch", "Name", "Colour", "Icon", "DCA", "DCA Colour"])
+    # user_in_routing: list[int] = get_user_in_routing_indexes(lines)
+    for line in lines:
         if line.find("/ch/") == 0 and line.find("/config ") == 6: #Read input ch
             curent_ch: str = line.split("ch/")[1].split("/config")[0]
             new_data: dict = {
                 "In/Out": "In",
                 "Ch": int(curent_ch),
                 "Mixer Ch": "Ch" + curent_ch,
-                "Pysical Ch": routing_lookup_tabel[user_in_routing[int(curent_ch) - 1] - 0],
+                # "Pysical Ch": routing_lookup_tabel[user_in_routing[int(curent_ch) - 1] - 0],
+                "Pysical Ch": get_override_routing(line, get_blocks(lines), get_user_in_routing_indexes(lines)),
                 "Name": line.split('"')[1],
                 "Colour": colour_lookup_table[line.split('"')[2].split(" ")[2]],
                 "Icon": icon_lookup_tabel[int(line.split('"')[2].split(" ")[1]) - 1],
@@ -246,6 +318,101 @@ def get_lines(path: str) -> list[str]:
     with open(path) as file:
         lines: list[str] = file.readlines()
     return lines
+
+block_routing_lookup_table: dict[tuple] = {
+    "AN1-8": ["Local 1", "Local 2", "Local 3", "Local 4", "Local 5", "Local 6", "Local 7", "Local 8"],
+    "AN9-16": ["Local 9", "Local 10", "Local 11", "Local 12", "Local 13", "Local 14", "Local 15", "Local 16"],
+    "AN17-24": ["Local 17", "Local 18", "Local 19", "Local 20", "Local 21", "Local 22", "Local 23", "Local 24"],
+    "AN25-32": ["Local 25", "Local 26", "Local 27", "Local 28", "Local 29", "Local 30", "Local 31", "Local 32"],
+    "A1-8": ["AES50-A 1", "AES50-A 2", "AES50-A 3", "AES50-A 4", "AES50-A 5", "AES50-A 6", "AES50-A 7", "AES50-A 8"],
+    "A9-16": ["AES50-A 9", "AES50-A 10", "AES50-A 11", "AES50-A 12", "AES50-A 13", "AES50-A 14", "AES50-A 15", "AES50-A 16"],
+    "A17-24": ["AES50-A 17", "AES50-A 18", "AES50-A 19", "AES50-A 20", "AES50-A 21", "AES50-A 22", "AES50-A 23", "AES50-A 24"],
+    "A25-32": ["AES50-A 25", "AES50-A 26", "AES50-A 27", "AES50-A 28", "AES50-A 29", "AES50-A 30", "AES50-A 31", "AES50-A 32"],
+    "A33-40": ["AES50-A 33", "AES50-A 34", "AES50-A 35", "AES50-A 36", "AES50-A 37", "AES50-A 38", "AES50-A 39", "AES50-A 40"],
+    "A41-48": ["AES50-A 41", "AES50-A 42", "AES50-A 43", "AES50-A 44", "AES50-A 45", "AES50-A 46", "AES50-A 47", "AES50-A 48"],
+    "B1-8": ["AES50-B 1", "AES50-B 2", "AES50-B 3", "AES50-B 4", "AES50-B 5", "AES50-B 6", "AES50-B 7", "AES50-B 8"],
+    "B9-16": ["AES50-B 9", "AES50-B 10", "AES50-B 11", "AES50-B 12", "AES50-B 13", "AES50-B 14", "AES50-B 15", "AES50-B 16"],
+    "B17-24": ["AES50-B 17", "AES50-B 18", "AES50-B 19", "AES50-B 20", "AES50-B 21", "AES50-B 22", "AES50-B 23", "AES50-B 24"],
+    "B25-32": ["AES50-B 25", "AES50-B 26", "AES50-B 27", "AES50-B 28", "AES50-B 29", "AES50-B 30", "AES50-B 31", "AES50-B 32"],
+    "B33-40": ["AES50-B 33", "AES50-B 34", "AES50-B 35", "AES50-B 36", "AES50-B 37", "AES50-B 38", "AES50-B 39", "AES50-B 40"],
+    "B41-48": ["AES50-B 41", "AES50-B 42", "AES50-B 43", "AES50-B 44", "AES50-B 45", "AES50-B 46", "AES50-B 47", "AES50-B 48"],
+    "CARD1-8": ["Card 1", "Card 2", "Card 3", "Card 4", "Card 5", "Card 6", "Card 7", "Card 8"],
+    "CARD9-16": ["Card 9", "Card 10", "Card 11", "Card 12", "Card 13", "Card 14", "Card 15", "Card 16"],
+    "CARD17-24": ["Card 17", "Card 18", "Card 19", "Card 20", "Card 21", "Card 22", "Card 23", "Card 24"],
+    "CARD25-32": ["Card 25", "Card 26", "Card 27", "Card 28", "Card 29", "Card 30", "Card 31", "Card 32"],
+    "UIN1-8": ["", 0],
+    "UIN9-16": ["", 8],
+    "UIN17-24": ["", 16],
+    "UIN25-32": ["", 24]
+}
+
+override_routing_lookup_table: tuple[str] = [
+    "Off",
+    "", # 1
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "", # 32
+    "Aux 1",
+    "Aux 2",
+    "Aux 3",
+    "Aux 4",
+    "Aux 5",
+    "Aux 6",
+    "USB L",
+    "USB R",
+    "Fx Rt 1 L",
+    "Fx Rt 1 R",
+    "Fx Rt 2 L",
+    "Fx Rt 2 R",
+    "Fx Rt 3 L",
+    "Fx Rt 3 R",
+    "Fx Rt 4 L",
+    "Fx Rt 4 R",
+    "Bus 1",
+    "Bus 2",
+    "Bus 3",
+    "Bus 4",
+    "Bus 5",
+    "Bus 6",
+    "Bus 7",
+    "Bus 8",
+    "Bus 9",
+    "Bus 10",
+    "Bus 11",
+    "Bus 12",
+    "Bus 13",
+    "Bus 14",
+    "Bus 15",
+    "Bus 16"
+]
 
 DCA_inver_number_lookup_table: tuple[int] = [
     7,
@@ -577,7 +744,7 @@ icon_lookup_tabel: tuple[str] = [
     "",
 ]
 
-colour_lookup_table: dict = {
+colour_lookup_table: dict[str] = {
     "OFF": "Black",
     "RD": "Red",
     "GN": "Green",
@@ -626,8 +793,8 @@ output_lookup_table: tuple[tuple[str]] = [
     
 ]
 
-note: str = 'Only suports "User In", and "Output" routing'
-print(note)
+# note: str = 'Please Wait'
+# print(note)
 
 file_path: str = get_file_path()
 if file_path: 
