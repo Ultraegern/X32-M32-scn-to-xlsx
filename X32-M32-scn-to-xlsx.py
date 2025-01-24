@@ -158,8 +158,9 @@ def is_file_in_use(path: str) -> bool:
     return False
 
 def get_first_DCA_name(lines: list[str], ch: str, aux_ch: bool = False) -> str:
-    if not get_grp_line(lines, ch).split(" %")[1].find("1") == -1:
-        return get_DCA_names(lines)[DCA_inver_number_lookup_table[get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")]]
+    first_DCA_index: int = get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")
+    if not first_DCA_index == -1:
+        return get_DCA_names(lines)[DCA_inver_number_lookup_table[first_DCA_index]]
     else:
         return ""
 
@@ -191,8 +192,9 @@ def get_DCA_colours(lines: list[str]) -> tuple[str]:
     return DCAs
 
 def get_first_DCA_colour(lines: list[str], ch: str, aux_ch: bool = False) -> str:
-    if not get_grp_line(lines, ch).split(" %")[1].find("1") == -1:
-        return get_DCA_colours(lines)[DCA_inver_number_lookup_table[get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")]]
+    first_DCA_index: int = get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")
+    if not first_DCA_index == -1:
+        return get_DCA_colours(lines)[DCA_inver_number_lookup_table[first_DCA_index]]
     else:
         return ""
 
