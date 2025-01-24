@@ -215,22 +215,22 @@ def get_blocks(lines: list[str]) -> list[str]:
 def get_block_routing(ch: int, blocks: list[str], user_in_routing_indexes: list[int]) -> str:
     if 1 <= ch <= 8:
         if block_routing_lookup_table[blocks[0]][0] == "":
-            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[0]][1] - 1]]
+            return user_in_routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[0]][1] - 1]]
         else:
             return block_routing_lookup_table[blocks[0]][ch - 1]
     elif 9 <= ch <= 16:
         if block_routing_lookup_table[blocks[1]][0] == "":
-            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[1]][1] - 8 - 1]]
+            return user_in_routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[1]][1] - 8 - 1]]
         else:
             return block_routing_lookup_table[blocks[1]][ch - 1 - 8]
     elif 17 <= ch <= 24:
         if block_routing_lookup_table[blocks[2]][0] == "":
-            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[2]][1] - 16 - 1]]
+            return user_in_routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[2]][1] - 16 - 1]]
         else:
             return block_routing_lookup_table[blocks[2]][ch - 1 - 16]
     elif 25 <= ch <= 32:
         if block_routing_lookup_table[blocks[3]][0] == "":
-            return routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[3]][1] - 24 - 1]]
+            return user_in_routing_lookup_tabel[user_in_routing_indexes[ch + block_routing_lookup_table[blocks[3]][1] - 24 - 1]]
         else:
             return block_routing_lookup_table[blocks[3]][ch - 1 - 24]
 
@@ -425,7 +425,7 @@ DCA_inver_number_lookup_table: tuple[int] = [
     0
 ]
 
-routing_lookup_tabel: tuple[str] = [
+user_in_routing_lookup_tabel: tuple[str] = [
     "Off",
     "?",
     "Local 1",
@@ -798,5 +798,5 @@ output_lookup_table: tuple[tuple[str]] = [
 
 file_path: str = get_file_path()
 if file_path: 
-    lines: str = get_lines(file_path)
+    lines: list[str] = get_lines(file_path)
     save_to_excel(get_inputs(lines), get_outputs(lines))
