@@ -5,7 +5,7 @@ from tkinter import messagebox
 import xlsxwriter
 import os
 
-readme: str = "https://github.com/cabcookie/saddleback-x32-general-scene?tab=readme-ov-file"
+inspiration: str = "https://github.com/cabcookie/saddleback-x32-general-scene?tab=readme-ov-file"
 
 def get_file_path() -> str:
     root = Tk()
@@ -28,24 +28,16 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
 
     # Define formats
     formats: dict = {
-        "Black": workbook.add_format({"bg_color": "#9f9f9f", "font_color": "#ffffff", 'border': 1}),
-        "Red": workbook.add_format({"bg_color": "#ff9f9f", "font_color": "#000000", 'border': 1}),
-        "Green": workbook.add_format({"bg_color": "#9fff9f", "font_color": "#000000", 'border': 1}),
-        "Yellow": workbook.add_format({"bg_color": "#ffff9f", "font_color": "#000000", 'border': 1}),
-        "Blue": workbook.add_format({"bg_color": "#879fff", "font_color": "#000000", 'border': 1}),
-        "Magenta": workbook.add_format({"bg_color": "#ff9fff", "font_color": "#000000", 'border': 1}),
-        "Cyan": workbook.add_format({"bg_color": "#9fdaff", "font_color": "#000000", 'border': 1}),
-        "White": workbook.add_format({"bg_color": "#ffffff", "font_color": "#000000", 'border': 1})
+        "Black": workbook.add_format({"bg_color": "#9f9f9f", "font_color": "#ffffff", 'border': 1, 'valign': 'vcenter'}),
+        "Red": workbook.add_format({"bg_color": "#ff9f9f", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
+        "Green": workbook.add_format({"bg_color": "#9fff9f", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
+        "Yellow": workbook.add_format({"bg_color": "#ffff9f", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
+        "Blue": workbook.add_format({"bg_color": "#879fff", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
+        "Magenta": workbook.add_format({"bg_color": "#ff9fff", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
+        "Cyan": workbook.add_format({"bg_color": "#9fdaff", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
+        "White": workbook.add_format({"bg_color": "#ffffff", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'})
     }
 
-    # Merge adjacent cells with the same value
-    # merge_format = workbook.add_format({
-    #     'bold': 1,
-    #     'border': 1,
-    #     'align': 'center',
-    #     'valign': 'vcenter',
-    #     'fg_color': 'white'
-    # })
     if "DCA" in data_to_save.columns:
         col_idx = data_to_save.columns.get_loc("DCA")
         start_row_merge = 1
@@ -77,7 +69,7 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
         col_idx = data_to_save.columns.get_loc(column) + start_col
         worksheet.set_column(col_idx, col_idx, column_width)
 
-def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = None, output_path: str = "C:/tmp/Kanalplan.xlsx", input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], output_columns_to_save: list = ["Ch", "Mixer Ch", "Name"]) -> None:
+def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = None, aux_input_data: pd.DataFrame = None, output_path: str = "C:/tmp/Kanalplan.xlsx", input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], aux_input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], output_columns_to_save: list = ["Ch", "Mixer Ch", "Name"]) -> None:
     if os.path.exists(output_path):
         if confirm_overwrite(output_path):
             if check_file(output_path):
@@ -92,6 +84,12 @@ def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = N
         input_data_to_save = input_data[input_columns_to_save]
     else:
         input_data_to_save = input_data
+        
+    aux_input_data_to_save: pd.DataFrame
+    if aux_input_columns_to_save:
+        aux_input_data_to_save = aux_input_data[aux_input_columns_to_save]
+    else:
+        aux_input_data_to_save = aux_input_data
     
     output_data_to_save: pd.DataFrame
     if output_columns_to_save:
@@ -101,7 +99,8 @@ def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = N
 
     with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer: 
         save_data(input_data_to_save, input_data, writer, start_row= 2, start_col= 1) # Write inputs
-        save_data(output_data_to_save, output_data, writer, start_row= 2, start_col= 6) # Write outputs
+        save_data(aux_input_data_to_save, aux_input_data, writer, start_row= 2, start_col= 6) # Write aux inputs
+        save_data(output_data_to_save, output_data, writer, start_row= 2, start_col= 11) # Write outputs
 
         workbook = writer.book
         worksheet = writer.sheets["Kanalplan"]
@@ -116,10 +115,11 @@ def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = N
             "font_color": "#ffffff"
         })
         worksheet.merge_range('B2:E2', 'Inputs', merge_format)
-        worksheet.merge_range('G2:I2', 'Outputs', merge_format) 
+        worksheet.merge_range('G2:J2', 'Aux Inputs', merge_format)
+        worksheet.merge_range('L2:N2', 'Outputs', merge_format) 
         
     os.startfile(output_path)
-      
+
 def confirm_overwrite(path: str) -> bool:
     root = Tk()
     root.wm_attributes("-topmost", True)
@@ -157,19 +157,23 @@ def is_file_in_use(path: str) -> bool:
         return True
     return False
 
-def get_first_DCA_name(lines: list[str], ch: str) -> str:
+def get_first_DCA_name(lines: list[str], ch: str, aux_ch: bool = False) -> str:
     if not get_grp_line(lines, ch).split(" %")[1].find("1") == -1:
-        return get_DCA_names(lines)[DCA_inver_number_lookup_table[get_grp_line(lines, ch).split(" %")[1].find("1")]]
+        return get_DCA_names(lines)[DCA_inver_number_lookup_table[get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")]]
     else:
         return ""
 
-def get_grp_line(lines: list[str], ch: str) -> str:
+def get_grp_line(lines: list[str], ch: str, aux_ch: bool = False) -> str:
     line_index: int = None
     iteraton: int = -1
     for line in lines:
         iteraton += 1
-        if line.find("/ch/" + ch + "/grp") == 0:
-            line_index = iteraton
+        if not aux_ch:
+            if line.find("/ch/" + ch + "/grp") == 0:
+                line_index = iteraton
+        else:
+            if line.find("/auxin/" + ch + "/grp") == 0:
+                line_index = iteraton
     return lines[line_index]
 
 def get_DCA_names(lines: list[str]) -> tuple[str]:
@@ -186,9 +190,9 @@ def get_DCA_colours(lines: list[str]) -> tuple[str]:
             DCAs.append(colour_lookup_table[line.split('"')[2].split(" ")[2].split(f"\n")[0]])
     return DCAs
 
-def get_first_DCA_colour(lines: list[str], ch: str) -> str:
+def get_first_DCA_colour(lines: list[str], ch: str, aux_ch: bool = False) -> str:
     if not get_grp_line(lines, ch).split(" %")[1].find("1") == -1:
-        return get_DCA_colours(lines)[DCA_inver_number_lookup_table[get_grp_line(lines, ch).split(" %")[1].find("1")]]
+        return get_DCA_colours(lines)[DCA_inver_number_lookup_table[get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")]]
     else:
         return ""
 
@@ -318,6 +322,61 @@ def get_lines(path: str) -> list[str]:
     with open(path) as file:
         lines: list[str] = file.readlines()
     return lines
+
+def get_aux_ch_routing(lines: list[str]) -> list[str]:
+    output: list[str] = []
+    aux_remap: str = get_aux_remap(lines)
+    user_in_routing_indexes: list[int] = get_user_in_routing_indexes(lines)
+    for ch in range(8):
+        remap: str = aux_ch_remap[aux_remap][ch]
+        if remap == "":
+            output.append(user_in_routing_lookup_tabel[user_in_routing_indexes[ch]])
+        else:
+            output.append(remap)
+    return output
+
+def get_aux_remap(lines: list[str]) -> str:
+    for line in lines:
+        if line.find("/config/routing/IN") == 0:
+            return line.split(" ")[5].strip(f"\n")
+
+def get_aux_inputs(lines: list[str]) -> pd.DataFrame:
+    inputs: pd.DataFrame = pd.DataFrame([], columns = ["In/Out", "Mixer Ch", "Pysical Ch", "Name", "Colour", "Icon", "DCA", "DCA Colour"])
+    for line in lines:
+        if line.find("/auxin/") == 0 and line.find("/config ") == 9:
+            curent_ch: str = line.split("/auxin/")[1].split("/config")[0]
+            new_data: dict = {
+                "In/Out": "In",
+                "Ch": int(curent_ch),
+                "Mixer Ch": "Aux" + curent_ch,
+                "Pysical Ch": get_aux_ch_routing(lines)[int(curent_ch) - 1],
+                "Name": line.split('"')[1],
+                "Colour": colour_lookup_table[line.split('"')[2].split(" ")[2]],
+                "Icon": icon_lookup_tabel[int(line.split('"')[2].split(" ")[1]) - 1],
+                "DCA": get_first_DCA_name(lines, curent_ch, aux_ch= True),
+                "DCA Colour": get_first_DCA_colour(lines, curent_ch, aux_ch= True)
+            }
+            inputs = pd.concat([inputs, pd.DataFrame([new_data])], ignore_index=True)
+    return inputs
+
+aux_ch_remap: dict[tuple[str]] = {
+    "AUX1-4": ["Aux in 1", "Aux in 2", "Aux in 3", "Aux in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "AN1-2": ["Local in 1", "Local in 2", "Aux in 3", "Aux in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "AN1-4": ["Local in 1", "Local in 2", "Local in 3", "Local in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "AN1-6": ["Local in 1", "Local in 2", "Local in 3", "Local in 4", "Local in 5", "Local in 6", "USB L", "USB R"],
+    "A1-2": ["AES50-A 1", "AES50-A 2", "Aux in 3", "Aux in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "A1-4": ["AES50-A 1", "AES50-A 2", "AES50-A 3", "AES50-A 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "A1-6": ["AES50-A 1", "AES50-A 2", "AES50-A 3", "AES50-A 4", "AES50-A 5", "AES50-A 6", "USB L", "USB R"],
+    "B1-2": ["AES50-B 1", "AES50-B 2", "Aux in 3", "Aux in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "B1-4": ["AES50-B 1", "AES50-B 2", "AES50-B 3", "AES50-B 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "B1-6": ["AES50-B 1", "AES50-B 2", "AES50-B 3", "AES50-B 4", "AES50-B 5", "AES50-B 6", "USB L", "USB R"],
+    "CARD1-2": ["Card 1", "Card 2", "Aux in 3", "Aux in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "CARD1-4": ["Card 1", "Card 2", "Card 3", "Card 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "CARD1-6": ["Card 1", "Card 2", "Card 3", "Card 4", "Card 5", "Card 6", "USB L", "USB R"],
+    "UIN1-2": ["", "", "Aux in 3", "Aux in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "UIN1-4": ["", "", "", "", "Aux in 5", "Aux in 6", "USB L", "USB R"],
+    "UIN1-6": ["", "", "", "", "", "", "USB L", "USB R"]
+}
 
 block_routing_lookup_table: dict[tuple] = {
     "AN1-8": ["Local 1", "Local 2", "Local 3", "Local 4", "Local 5", "Local 6", "Local 7", "Local 8"],
@@ -799,4 +858,5 @@ output_lookup_table: tuple[tuple[str]] = [
 file_path: str = get_file_path()
 if file_path: 
     lines: list[str] = get_lines(file_path)
-    save_to_excel(get_inputs(lines), get_outputs(lines))
+    get_aux_inputs(lines)
+    save_to_excel(get_inputs(lines), get_outputs(lines), get_aux_inputs(lines))
