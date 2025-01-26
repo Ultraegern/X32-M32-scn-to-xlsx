@@ -53,10 +53,10 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
     
     # Colour rows + DCAs
     for row_idx in range(len(data_to_save)):
-        color = all_data.at[row_idx, "Colour"]
-        DCA_color = all_data.at[row_idx, "DCA Colour"] if "DCA" in all_data and pd.notna(all_data.at[row_idx, "DCA Colour"]) else "White"
+        format = formats.get(all_data.at[row_idx, "Colour"], formats["White"])
+        DCA_format = formats.get(all_data.at[row_idx, "DCA Colour"], formats["White"]) if has_column(all_data, "DCA Colour") else formats["White"]
         for col_idx, col_name in enumerate(data_to_save.columns):
-            format_to_use = formats[DCA_color] if col_name == "DCA" and DCA_color in formats else formats.get(color, formats["White"])
+            format_to_use = DCA_format if col_name == "DCA" and DCA_format else format
             worksheet.write(row_idx + 1 + start_row, col_idx + start_col, data_to_save.iloc[row_idx, col_idx], format_to_use)
 
     # Auto-adjust column width
@@ -64,6 +64,13 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
         column_width = max(all_data[column].astype(str).map(len).max(), len(column)) + 2
         col_idx = data_to_save.columns.get_loc(column) + start_col
         worksheet.set_column(col_idx, col_idx, column_width)
+
+def has_column(data: pd.DataFrame, column: str) -> bool:
+    try: 
+        data.at[1, column]
+    except KeyError:
+        return False
+    return True
 
 def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = None, aux_input_data: pd.DataFrame = None, output_path: str = "C:/tmp/Kanalplan.xlsx", input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], aux_input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], output_columns_to_save: list = ["Ch", "Mixer Ch", "Name"]) -> None:
     if os.path.exists(output_path):
@@ -828,7 +835,6 @@ def main():
     file_path: str = get_file_path()
     if file_path: 
         lines: list[str] = get_lines(file_path)
-        get_aux_inputs(lines)
         save_to_excel(get_inputs(lines), get_outputs(lines), get_aux_inputs(lines))
 
 if __name__ == "__main__" and profile:
