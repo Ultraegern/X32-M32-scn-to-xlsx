@@ -27,7 +27,7 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
     worksheet = writer.sheets["Kanalplan"]
 
     # Define formats
-    formats: dict = {
+    formats = {
         "Black": workbook.add_format({"bg_color": "#9f9f9f", "font_color": "#ffffff", 'border': 1, 'valign': 'vcenter'}),
         "Red": workbook.add_format({"bg_color": "#ff9f9f", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
         "Green": workbook.add_format({"bg_color": "#9fff9f", "font_color": "#000000", 'border': 1, 'valign': 'vcenter'}),
@@ -52,16 +52,10 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
     # Colour rows + DCAs
     for row_idx in range(len(data_to_save)):
         color = all_data.at[row_idx, "Colour"]
-        if "DCA" in all_data: DCA_color = all_data.at[row_idx, "DCA Colour"] if pd.notna(all_data.at[row_idx, "DCA Colour"]) else "White"
-        if color in formats:
-            for col_idx, col_name in enumerate(data_to_save.columns):
-                if col_name != "DCA":  # Use the general color for other columns
-                    worksheet.write(row_idx + 1 + start_row, col_idx + start_col, data_to_save.iloc[row_idx, col_idx], formats[color])
-                else:  # Use the DCA color for the "DCA" column
-                    if DCA_color in formats:
-                        worksheet.write(row_idx + 1 + start_row, col_idx + start_col, data_to_save.iloc[row_idx, col_idx], formats[DCA_color])
-                    else:
-                        worksheet.write(row_idx + 1 + start_row, col_idx + start_col, data_to_save.iloc[row_idx, col_idx], formats["White"])
+        DCA_color = all_data.at[row_idx, "DCA Colour"] if "DCA" in all_data and pd.notna(all_data.at[row_idx, "DCA Colour"]) else "White"
+        for col_idx, col_name in enumerate(data_to_save.columns):
+            format_to_use = formats[DCA_color] if col_name == "DCA" and DCA_color in formats else formats.get(color, formats["White"])
+            worksheet.write(row_idx + 1 + start_row, col_idx + start_col, data_to_save.iloc[row_idx, col_idx], format_to_use)
 
     # Auto-adjust column width
     for column in data_to_save.columns:
@@ -71,36 +65,17 @@ def save_data(data_to_save: pd.DataFrame, all_data: pd.DataFrame, writer: any, s
 
 def save_to_excel(input_data: pd.DataFrame = None, output_data: pd.DataFrame = None, aux_input_data: pd.DataFrame = None, output_path: str = "C:/tmp/Kanalplan.xlsx", input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], aux_input_columns_to_save: list = ["Ch", "Pysical Ch", "Name", "DCA"], output_columns_to_save: list = ["Ch", "Mixer Ch", "Name"]) -> None:
     if os.path.exists(output_path):
-        if confirm_overwrite(output_path):
-            if check_file(output_path):
-                pass
-            else:
-                return
-        else:
+        if not confirm_overwrite(output_path) or not check_file(output_path):
             return
     
-    input_data_to_save: pd.DataFrame
-    if input_columns_to_save:
-        input_data_to_save = input_data[input_columns_to_save]
-    else:
-        input_data_to_save = input_data
-        
-    aux_input_data_to_save: pd.DataFrame
-    if aux_input_columns_to_save:
-        aux_input_data_to_save = aux_input_data[aux_input_columns_to_save]
-    else:
-        aux_input_data_to_save = aux_input_data
-    
-    output_data_to_save: pd.DataFrame
-    if output_columns_to_save:
-        output_data_to_save = output_data[output_columns_to_save]
-    else:
-        output_data_to_save = output_data
+    input_data_to_save = input_data[input_columns_to_save] if input_columns_to_save else input_data
+    aux_input_data_to_save = aux_input_data[aux_input_columns_to_save] if aux_input_columns_to_save else aux_input_data
+    output_data_to_save = output_data[output_columns_to_save] if output_columns_to_save else output_data
 
     with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer: 
-        save_data(input_data_to_save, input_data, writer, start_row= 2, start_col= 1) # Write inputs
-        save_data(aux_input_data_to_save, aux_input_data, writer, start_row= 2, start_col= 6) # Write aux inputs
-        save_data(output_data_to_save, output_data, writer, start_row= 2, start_col= 11) # Write outputs
+        save_data(input_data_to_save, input_data, writer, start_row=2, start_col=1)
+        save_data(aux_input_data_to_save, aux_input_data, writer, start_row=2, start_col=6)
+        save_data(output_data_to_save, output_data, writer, start_row=2, start_col=11)
 
         workbook = writer.book
         worksheet = writer.sheets["Kanalplan"]
@@ -158,11 +133,9 @@ def is_file_in_use(path: str) -> bool:
     return False
 
 def get_first_DCA_name(lines: list[str], ch: str, aux_ch: bool = False) -> str:
-    first_DCA_index: int = get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")
-    if not first_DCA_index == -1:
-        return get_DCA_names(lines)[DCA_inver_number_lookup_table[first_DCA_index]]
-    else:
-        return ""
+    grp_line = get_grp_line(lines, ch, aux_ch)
+    first_DCA_index = grp_line.split(" %")[1].find("1")
+    return get_DCA_names(lines)[DCA_inver_number_lookup_table[first_DCA_index]] if first_DCA_index != -1 else ""
 
 def get_grp_line(lines: list[str], ch: str, aux_ch: bool = False) -> str:
     line_index: int = None
@@ -192,11 +165,9 @@ def get_DCA_colours(lines: list[str]) -> tuple[str]:
     return DCAs
 
 def get_first_DCA_colour(lines: list[str], ch: str, aux_ch: bool = False) -> str:
-    first_DCA_index: int = get_grp_line(lines, ch, aux_ch).split(" %")[1].find("1")
-    if not first_DCA_index == -1:
-        return get_DCA_colours(lines)[DCA_inver_number_lookup_table[first_DCA_index]]
-    else:
-        return ""
+    grp_line = get_grp_line(lines, ch, aux_ch)
+    first_DCA_index = grp_line.split(" %")[1].find("1")
+    return get_DCA_colours(lines)[DCA_inver_number_lookup_table[first_DCA_index]] if first_DCA_index != -1 else ""
 
 def get_user_in_routing_indexes(lines: str) -> list[int]:
     user_in_routing: list[int] = []
