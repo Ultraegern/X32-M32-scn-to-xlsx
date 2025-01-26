@@ -219,16 +219,14 @@ def get_override_routing(line: str, blocks: list[str], user_in_routing_indexes: 
         return override_routing_lookup_table[override_index]
 
 def get_inputs(lines: list[str]) -> pd.DataFrame:
-    inputs: pd.DataFrame = pd.DataFrame([], columns = ["In/Out", "Mixer Ch", "Pysical Ch", "Name", "Colour", "Icon", "DCA", "DCA Colour"])
-    # user_in_routing: list[int] = get_user_in_routing_indexes(lines)
+    data: list[dict] = []
     for line in lines:
-        if line.find("/ch/") == 0 and line.find("/config ") == 6: #Read input ch
-            curent_ch: str = line.split("ch/")[1].split("/config")[0]
+        if line.find("/ch/") == 0 and line.find("/config ") == 6:
+            curent_ch = line.split("ch/")[1].split("/config")[0]
             new_data: dict = {
                 "In/Out": "In",
                 "Ch": int(curent_ch),
                 "Mixer Ch": "Ch" + curent_ch,
-                # "Pysical Ch": routing_lookup_tabel[user_in_routing[int(curent_ch) - 1] - 0],
                 "Pysical Ch": get_override_routing(line, get_blocks(lines), get_user_in_routing_indexes(lines)),
                 "Name": line.split('"')[1],
                 "Colour": colour_lookup_table[line.split('"')[2].split(" ")[2]],
@@ -236,8 +234,8 @@ def get_inputs(lines: list[str]) -> pd.DataFrame:
                 "DCA": get_first_DCA_name(lines, curent_ch),
                 "DCA Colour": get_first_DCA_colour(lines, curent_ch)
             }
-            inputs = pd.concat([inputs, pd.DataFrame([new_data])], ignore_index=True)
-    return inputs
+            data.append(new_data)
+    return pd.DataFrame(data)
 
 def find_output_line(lines: str, output_index: int) -> str:
     for line in lines:
@@ -246,8 +244,7 @@ def find_output_line(lines: str, output_index: int) -> str:
     return ""
 
 def get_outputs(lines: list[str]) -> pd.DataFrame:
-    outputs: pd.DataFrame = pd.DataFrame([], columns = ["In/Out", "Ch", "Mixer Ch", "Name", "Colour"])
-
+    data: list[dict] = []
     for line in lines:
         if line.find("/outputs/main/") == 0 and line.find(" ") == 16:
             curent_ch: str = line.split("/outputs/main/")[1].split(" ")[0]
@@ -287,14 +284,12 @@ def get_outputs(lines: list[str]) -> pd.DataFrame:
                     "Colour": colour_lookup_table[output_line.split('"')[2].split(" ")[2].strip(f"\n")],
                 }
                 
-            outputs = pd.concat([outputs, pd.DataFrame([new_data])], ignore_index=True)
-
-    return outputs
+            data.append(new_data)
+    return pd.DataFrame(data)
 
 def get_lines(path: str) -> list[str]:
     with open(path) as file:
-        lines: list[str] = file.readlines()
-    return lines
+        return file.readlines()
 
 def get_aux_ch_routing(lines: list[str]) -> list[str]:
     output: list[str] = []
@@ -314,7 +309,7 @@ def get_aux_remap(lines: list[str]) -> str:
             return line.split(" ")[5].strip(f"\n")
 
 def get_aux_inputs(lines: list[str]) -> pd.DataFrame:
-    inputs: pd.DataFrame = pd.DataFrame([], columns = ["In/Out", "Mixer Ch", "Pysical Ch", "Name", "Colour", "Icon", "DCA", "DCA Colour"])
+    data: list[dict] = []
     for line in lines:
         if line.find("/auxin/") == 0 and line.find("/config ") == 9:
             curent_ch: str = line.split("/auxin/")[1].split("/config")[0]
@@ -329,8 +324,8 @@ def get_aux_inputs(lines: list[str]) -> pd.DataFrame:
                 "DCA": get_first_DCA_name(lines, curent_ch, aux_ch= True),
                 "DCA Colour": get_first_DCA_colour(lines, curent_ch, aux_ch= True)
             }
-            inputs = pd.concat([inputs, pd.DataFrame([new_data])], ignore_index=True)
-    return inputs
+            data.append(new_data)
+    return pd.DataFrame(data)
 
 aux_ch_remap: dict[tuple[str]] = {
     "AUX1-4": ["Aux in 1", "Aux in 2", "Aux in 3", "Aux in 4", "Aux in 5", "Aux in 6", "USB L", "USB R"],
