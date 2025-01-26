@@ -4,6 +4,8 @@ from tkinter.filedialog import askopenfilename
 from tkinter import messagebox
 import xlsxwriter
 import os
+import cProfile
+import pstats
 
 inspiration: str = "https://github.com/cabcookie/saddleback-x32-general-scene?tab=readme-ov-file"
 
@@ -820,11 +822,24 @@ output_lookup_table: tuple[tuple[str]] = [
     
 ]
 
-# note: str = 'Please Wait'
-# print(note)
+profile: bool = False
 
-file_path: str = get_file_path()
-if file_path: 
-    lines: list[str] = get_lines(file_path)
-    get_aux_inputs(lines)
-    save_to_excel(get_inputs(lines), get_outputs(lines), get_aux_inputs(lines))
+def main():
+    file_path: str = get_file_path()
+    if file_path: 
+        lines: list[str] = get_lines(file_path)
+        get_aux_inputs(lines)
+        save_to_excel(get_inputs(lines), get_outputs(lines), get_aux_inputs(lines))
+
+if __name__ == "__main__" and profile:
+    profiler = cProfile.Profile()
+    profiler.enable()
+    main()
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats('tottime')
+    with open('profiling_stats.txt', 'w') as f:
+        stats.stream = f
+        stats.print_stats()
+    os.startfile('profiling_stats.txt')
+else:
+    main()
