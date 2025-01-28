@@ -260,37 +260,39 @@ def get_outputs(lines: list[str]) -> pd.DataFrame:
             output_index: int = int(line.split("/outputs/main/")[1].split(" ")[1])
 
             output_line = find_output_line(lines, output_index)
-            if output_line == "":
+            output_name = output_line.split('"')[1] if not output_line == "" else "Off"
+            output_colour = colour_lookup_table[output_line.split('"')[2].split(" ")[2].strip(f"\n")] if not output_line == "" else "White"
+            if output_lookup_table[output_index][1] == "st" and output_index == 1 and output_name == "":
                 new_data: dict = {
                     "In/Out": "Out",
                     "Ch": int(curent_ch),
                     "Mixer Ch": output_lookup_table[output_index][2],
-                    "Name": "Off",
-                    "Colour": "White",
+                    "Name": "Main L",
+                    "Colour": output_colour,
                 }
-            elif output_lookup_table[output_index][1] == "st" and output_index == 1 or output_index == 2:
+            elif output_lookup_table[output_index][1] == "st" and output_index == 2 and output_name == "":
                 new_data: dict = {
                     "In/Out": "Out",
                     "Ch": int(curent_ch),
                     "Mixer Ch": output_lookup_table[output_index][2],
-                    "Name": "LR",
-                    "Colour": colour_lookup_table[output_line.split('"')[2].split(" ")[2].strip(f"\n")],
+                    "Name": "Main R",
+                    "Colour": output_colour,
                 }
-            elif output_lookup_table[output_index][1] == "m":
+            elif output_lookup_table[output_index][1] == "m" and output_name == "":
                 new_data: dict = {
                     "In/Out": "Out",
                     "Ch": int(curent_ch),
                     "Mixer Ch": output_lookup_table[output_index][2],
                     "Name": "M/C",
-                    "Colour": colour_lookup_table[output_line.split('"')[2].split(" ")[2].strip(f"\n")],
+                    "Colour": output_colour,
                 }
             else:
                 new_data: dict = {
                     "In/Out": "Out",
                     "Ch": int(curent_ch),
                     "Mixer Ch": output_lookup_table[output_index][2],
-                    "Name": output_line.split('"')[1],
-                    "Colour": colour_lookup_table[output_line.split('"')[2].split(" ")[2].strip(f"\n")],
+                    "Name": output_name,
+                    "Colour": output_colour,
                 }
                 
             data.append(new_data)
@@ -463,7 +465,7 @@ DCA_inver_number_lookup_table: tuple[int] = [
 
 user_in_routing_lookup_tabel: tuple[str] = [
     "Off",
-    "?",
+    "If you see this, something went wrong",
     "Local 1",
     "Local 2",
     "Local 3",
@@ -801,8 +803,8 @@ colour_lookup_table: dict[str] = {
 
 output_lookup_table: tuple[tuple[str]] = [
     ["Off", "", "Off"],
-    ["main", "st", "L"],
-    ["main", "st", "R"],
+    ["main", "st", "Main L"],
+    ["main", "st", "Main R"],
     ["main", "m", "M/C"],
     ["bus", "01", "Bus 1"],
     ["bus", "02", "Bus 2"],
